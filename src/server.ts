@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes';
 import countryRoutes from './routes/countryRoutes';
 import adminRoutes from './routes/adminRoutes';
 import usermanageRoutes from './routes/usermanageRoutes';
+import subscriptionRoutes from './routes/subscriptionRoutes';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/countries', countryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/usermanage', usermanageRoutes);
+app.use('/api/v1/subscription', subscriptionRoutes);
 
 const PORT = process.env.PORT || 5000;
 
