@@ -6,6 +6,9 @@ export interface IUser extends Document {
   password?: string;
   role: 'user' | 'admin';
   isBlocked: boolean;
+  subscriptionStatus: 'REGISTERED' | 'UNREGISTERED' | 'PENDING';
+  networkProvider: 'MSPACE' | 'IDEAMART' | 'UNKNOWN';
+  otpReferenceNo?: string;
 }
 
 const UserSchema: Schema = new Schema({
@@ -14,6 +17,9 @@ const UserSchema: Schema = new Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   isBlocked: { type: Boolean, default: false },
+  subscriptionStatus: { type: String, enum: ['REGISTERED', 'UNREGISTERED', 'PENDING'], default: 'UNREGISTERED' },
+  networkProvider: { type: String, enum: ['MSPACE', 'IDEAMART', 'UNKNOWN'], default: 'UNKNOWN' },
+  otpReferenceNo: { type: String, default: null },
 }, {
   timestamps: true
 });
