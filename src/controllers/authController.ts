@@ -91,7 +91,7 @@ export const requestOtp = async (req: Request, res: Response): Promise<void> => 
 
     const networkProvider = identifyTelco(phoneNumber);
     let user = await User.findOne({ phoneNumber });
-    
+
     if (!user) {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(Math.random().toString(), salt);
@@ -140,7 +140,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
   try {
     const { phoneNumber, otp } = req.body;
     const user = await User.findOne({ phoneNumber });
-    
+
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
@@ -156,10 +156,15 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
           referenceNo: user.otpReferenceNo,
           otp: otp
         });
-        if (response.data?.statusCode === 'S1000' || response.status === 200) {
+
+        // STRICT CHECK: Only S1000 means success.
+        if (response.data?.statusCode === 'S1000') {
           success = true;
+        } else {
+          console.error("mSpace Verification Failed:", response.data);
         }
       } catch (err) {
+        console.error("mSpace API Error:", err);
         success = false;
       }
     } else if (user.networkProvider === 'IDEAMART') {
@@ -171,12 +176,19 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
             subscriberId: `tel:${phoneNumber}`,
             action: "1"
           });
-          if (response.data?.statusCode === 'S1000' || response.status === 200) {
+
+          // STRICT CHECK: Only S1000 means success.
+          if (response.data?.statusCode === 'S1000') {
             success = true;
+          } else {
+            console.error("Ideamart Subscription Failed:", response.data);
           }
         } catch (err) {
+          console.error("Ideamart API Error:", err);
           success = false;
         }
+      } else {
+        console.error("Local OTP mismatch for Ideamart user");
       }
     }
 

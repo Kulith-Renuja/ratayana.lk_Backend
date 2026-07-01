@@ -12,7 +12,7 @@ export const checkStatus = async (req: AuthRequest, res: Response): Promise<void
     }
 
     let isRegistered = false;
-    
+
     if (user.networkProvider === 'MSPACE') {
       try {
         const response = await axios.post('https://api.mspace.lk/subscription/getStatus', {
@@ -21,7 +21,9 @@ export const checkStatus = async (req: AuthRequest, res: Response): Promise<void
           subscriberId: `tel:${user.phoneNumber}`
         });
         if (response.data?.subscriptionStatus === 'REGISTERED') isRegistered = true;
-      } catch (err) { }
+      } catch (err) {
+        console.error("mSpace GetStatus API Error:", err);
+      }
     } else if (user.networkProvider === 'IDEAMART') {
       try {
         const response = await axios.post('https://api.ideamart.io/subscription/getStatus', {
@@ -30,7 +32,9 @@ export const checkStatus = async (req: AuthRequest, res: Response): Promise<void
           subscriberId: `tel:${user.phoneNumber}`
         });
         if (response.data?.subscriptionStatus === 'REGISTERED') isRegistered = true;
-      } catch (err) { }
+      } catch (err) {
+        console.error("Ideamart GetStatus API Error:", err);
+      }
     }
 
     if (!isRegistered) {
@@ -52,14 +56,14 @@ export const toggleSubscription = async (req: AuthRequest, res: Response): Promi
   try {
     const { action } = req.body;
     const user = await User.findById(req.user?.userId);
-    
+
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
 
     let success = false;
-    
+
     if (user.networkProvider === 'MSPACE') {
       try {
         const response = await axios.post('https://api.mspace.lk/subscription/send', {
@@ -68,8 +72,16 @@ export const toggleSubscription = async (req: AuthRequest, res: Response): Promi
           subscriberId: `tel:${user.phoneNumber}`,
           action: action
         });
-        if (response.data?.statusCode === 'S1000' || response.status === 200) success = true;
-      } catch (err) { }
+
+        // STRICT CHECK
+        if (response.data?.statusCode === 'S1000') {
+          success = true;
+        } else {
+          console.error("mSpace Subscription Toggle Failed:", response.data);
+        }
+      } catch (err) {
+        console.error("mSpace API Error (Toggle):", err);
+      }
     } else if (user.networkProvider === 'IDEAMART') {
       try {
         const response = await axios.post('https://api.ideamart.io/subscription/send', {
@@ -78,8 +90,16 @@ export const toggleSubscription = async (req: AuthRequest, res: Response): Promi
           subscriberId: `tel:${user.phoneNumber}`,
           action: action
         });
-        if (response.data?.statusCode === 'S1000' || response.status === 200) success = true;
-      } catch (err) { }
+
+        // STRICT CHECK
+        if (response.data?.statusCode === 'S1000') {
+          success = true;
+        } else {
+          console.error("Ideamart Subscription Toggle Failed:", response.data);
+        }
+      } catch (err) {
+        console.error("Ideamart API Error (Toggle):", err);
+      }
     }
 
     if (success) {
