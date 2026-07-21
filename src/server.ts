@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db';
+import { startSubscriptionCheckCron } from './utils/cronJobs';
 import authRoutes from './routes/authRoutes';
 import countryRoutes from './routes/countryRoutes';
 import adminRoutes from './routes/adminRoutes';
@@ -12,6 +13,7 @@ dotenv.config();
 
 // Connect to MongoDB
 connectDB();
+startSubscriptionCheckCron();
 
 const app: Application = express();
 
