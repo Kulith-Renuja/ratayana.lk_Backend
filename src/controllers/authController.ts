@@ -5,36 +5,6 @@ import axios from 'axios';
 import User from '../models/User';
 import { identifyTelco } from '../utils/telcoRouter';
 
-export const register = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { name, phoneNumber, password } = req.body;
-
-    const existingUser = await User.findOne({ phoneNumber });
-    if (existingUser) {
-      res.status(400).json({ message: 'User already exists with this phone number' });
-      return;
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const newUser = new User({
-      name,
-      phoneNumber,
-      password: hashedPassword,
-    });
-
-    await newUser.save();
-
-    res.status(201).json({ message: 'User registered successfully' });
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(500).json({ message: 'Server error', error: error.message });
-    } else {
-      res.status(500).json({ message: 'An unknown error occurred' });
-    }
-  }
-};
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -83,28 +53,35 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const requestOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber) {
-      res.status(400).json({ message: 'Phone number is required' });
+    const { name, phoneNumber, password } = req.body;
+    if (!name || !phoneNumber || !password) {
+      res.status(400).json({ message: 'Name, phone number, and password are required' });
       return;
     }
 
     const networkProvider = identifyTelco(phoneNumber);
     let user = await User.findOne({ phoneNumber });
 
-    if (!user) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(Math.random().toString(), salt);
+    if (user && user.subscriptionStatus === 'REGISTERED') {
+      res.status(400).json({ message: 'User already registered with this phone number. Please login.' });
+      return;
+    }
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    if (!user) {
       user = new User({
+        name,
         phoneNumber,
-        name: 'Pending User',
         password: hashedPassword,
         networkProvider,
         subscriptionStatus: 'PENDING'
       });
       await user.save();
     } else {
+      user.name = name;
+      user.password = hashedPassword;
       user.networkProvider = networkProvider;
       await user.save();
     }
@@ -122,8 +99,14 @@ export const requestOtp = async (req: Request, res: Response): Promise<void> => 
       const localOtp = Math.floor(100000 + Math.random() * 900000).toString();
       user.otpReferenceNo = localOtp;
       await user.save();
-      // Mock SMS sending block
-      console.log(`Sending mock SMS to IDEAMART user ${phoneNumber}: Your OTP is ${localOtp}`);
+
+      await axios.post('https://api.ideamart.io/sms/send', {
+        applicationId: process.env.IDEAMART_APP_ID,
+        password: process.env.IDEAMART_PASSWORD,
+        destinationAddresses: [`tel:${phoneNumber}`],
+        message: `Your Ratayana verification code is ${localOtp}`,
+        sourceAddress: process.env.IDEAMART_APP_ID
+      });
     }
 
     res.status(200).json({ message: 'OTP requested successfully' });
